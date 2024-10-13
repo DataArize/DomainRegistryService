@@ -16,6 +16,8 @@ dependencies {
     implementation 'io.quarkus:quarkus-reactive-pg-client'
     implementation 'io.quarkus:quarkus-arc'
     implementation 'dnsjava:dnsjava:3.6.2'
+    implementation platform('com.google.cloud:libraries-bom:26.48.0')
+    implementation 'com.google.cloud:google-cloud-dns:2.50.0'
     compileOnly 'org.projectlombok:lombok:1.18.34'
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
     testImplementation 'io.quarkus:quarkus-junit5'

@@ -7,4 +7,5 @@ public final class Errors {
     public static final String INVALID_DOMAIN_PROVIDED = "Invalid domain provided, Domain Name: ";
     public static final String NS_RECORD_ALREADY_EXISTS = "NS records already exist for domain: ";
     public static final String UNEXPECTED_ERROR_OCCURRED = "An unexpected error occurred, Exception: ";
+    public static final String UNABLE_TO_CREATE_MANAGED_ZONE = "Unable to create Manged Zone, Exception: ";
 }
