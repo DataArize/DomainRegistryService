@@ -35,7 +35,7 @@ public class DNSResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Uni<Response> createCloudDNSManagedZone(List<String> domains) {
         return dnsManagementService.provisionDNSManagedZone(domains)
-                .onItem().transform(managedZones -> Response.status(Response.Status.OK)
+                .onItem().transform(managedZones -> Response.status(Response.Status.CREATED)
                             .entity(managedZones)
                             .build())
                 .onFailure(ManagedZoneCreationFailed.class)
