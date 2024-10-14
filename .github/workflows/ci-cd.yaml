@@ -1,0 +1,28 @@
+name: CI-CD
+on:
+  push:
+    branches: ["main","develop","release/**"]
+  pull_request:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy_to_artifact_registry:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin' # See 'Supported distributions' for available options
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Install Dependencies
+        run: ./gradlew build --no-daemon
