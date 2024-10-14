@@ -29,6 +29,12 @@ public class DNSResource {
     }
 
 
+    /**
+     * API used to create Managed Zone
+     * in Cloud DNS
+     * @param domains "List of domains"
+     * @return "List<ManagedZone>"
+     */
     @POST
     @Path("/create")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -48,7 +54,7 @@ public class DNSResource {
                 .onFailure().recoverWithItem(ex -> {
                     log.error("Unexpected error occurred while creating Managed Zone: {}", ex.getMessage());
                     return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                            .entity(new org.acme.model.Response("An unexpected error occurred."))
+                            .entity(new org.acme.model.Response(Errors.UNEXPECTED_ERROR_OCCURRED + ex.getMessage()))
                             .build();
                 });
     }

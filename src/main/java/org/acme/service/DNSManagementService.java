@@ -33,22 +33,36 @@ import java.util.List;
 @ApplicationScoped
 public class DNSManagementService {
 
-    @ConfigProperty(name = "gcp.project.id")
-    private String projectId;
+    private final String projectId;
+
+    private final String activeProfile;
 
     private final Dns cloudDnsClient;
 
     @Inject
-    @Named("cloudDnsClient")
-    public DNSManagementService(Dns cloudDnsClient) {
+
+    public DNSManagementService(@ConfigProperty(name = "gcp.project.id") String projectId,
+                                @ConfigProperty(name = "quarkus.profile") String activeProfile,
+                                @Named("cloudDnsClient") Dns cloudDnsClient) {
+        this.projectId = projectId;
+        this.activeProfile = activeProfile;
         this.cloudDnsClient = cloudDnsClient;
     }
 
+    /**
+     * Function Used to create a Managed Zone in cloud DNS.
+     * Available Options:
+     * 1. Enabled dnssecConfig (DNSSEC helps secure the DNS lookup process by preventing certain types of attacks, such as DNS spoofing.)
+     * 2. cloudLoggingConfig (Enabling Cloud Logging for DNS zones allows you to track DNS queries and troubleshoot issues.)
+     * Note: Input Domain list must indicate that the domain is root domain (eg: houseofllm.com.)
+     * @param domains "List of domains"
+     * @return "List<ManagedZone>"
+     */
     public Uni<List<ManagedZone>> provisionDNSManagedZone(List<String> domains) {
         return Multi.createFrom().items(domains.stream())
                 .onItem().transformToUniAndConcatenate(domain -> {
                     ManagedZone managedZone = DNSValidator
-                            .initializeManagedZone(Dummy.DUMMY_NAME, domain);
+                            .initializeManagedZone(Dummy.DUMMY_NAME, domain, activeProfile);
                     return Uni.createFrom().item(() -> {
                         try {
                             Dns.ManagedZones.Create request = cloudDnsClient.managedZones().create(projectId, managedZone);
