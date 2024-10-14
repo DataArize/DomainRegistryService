@@ -5,6 +5,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -13,9 +14,7 @@ import org.acme.constants.Success;
 import org.acme.exceptions.DNSAlreadyExistsException;
 import org.acme.service.DomainValidationService;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Path("/domains")
@@ -39,6 +38,7 @@ public class DomainResource {
     @POST
     @Path("/validate")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public Uni<Response> validateDomainFormat(List<String> domains) {
         log.info("Received request to validate domains: {}", domains);
         return domainValidationService.validateDomain(domains).onItem()
@@ -66,6 +66,7 @@ public class DomainResource {
     @POST
     @Path("/lookup")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
     public Uni<Response> validateDNSEntries(List<String> domains) {
         return domainValidationService.validateDNSEntries(domains)
                 .onItem().transform(success -> Response.status(Response.Status.OK)
