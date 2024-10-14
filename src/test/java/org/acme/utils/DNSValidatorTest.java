@@ -3,15 +3,21 @@ package org.acme.utils;
 import com.google.api.services.dns.model.ManagedZone;
 import com.google.api.services.dns.model.ManagedZoneCloudLoggingConfig;
 import com.google.api.services.dns.model.ManagedZoneDnsSecConfig;
+import com.google.api.services.dns.model.ResourceRecordSet;
 import io.quarkus.test.junit.QuarkusTest;
 import org.acme.constants.DNS;
+import org.acme.constants.DNSRecordType;
 import org.acme.constants.DNSState;
 import org.acme.constants.ZoneVisibility;
 import org.acme.exceptions.DNSAlreadyExistsException;
 import org.acme.exceptions.InvalidDomainNameException;
+import org.acme.model.Request;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.Collections;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.wildfly.common.Assert.assertNotNull;
@@ -111,6 +117,49 @@ class DNSValidatorTest {
 
         String baseDomain = DNSValidator.getBaseDomain(domain);
         assertEquals(expectedBaseDomain, baseDomain);
+    }
+
+    @Test
+    void givenValidRequest_whenInitializeResourceRecords_thenReturnValidResourceRecordSet() {
+        Request request = new Request();
+        request.setDomain("example.com.");
+        request.setServerDNS("server.example.com.");
+        ResourceRecordSet result = DNSValidator.initializeResourceRecords(request);
+        assertEquals("example.com.", result.getName());
+        assertEquals(DNSRecordType.MX.name(), result.getType());
+        assertEquals(DNS.DNS_TTL, result.getTtl());
+        assertEquals(Collections.singletonList(
+                DNS.MX_RECORD.replace(DNS.SERVER_DNS_NAME, "server.example.com.")
+        ), result.getRrdatas());
+    }
+
+    @Test
+    void givenMXRecordType_whenCreateDNSRecords_thenReturnMXRecord() {
+        Request request = new Request();
+        request.setServerDNS("mail.example.com");
+        List<String> records = DNSValidator.createDNSRecords(DNSRecordType.MX.name(), request);
+        assertNotNull(records);
+        assertEquals(1, records.size());
+        assertEquals(DNS.MX_RECORD.replace(DNS.SERVER_DNS_NAME, "mail.example.com"), records.get(0));
+    }
+
+    @Test
+    void givenSPFRecordType_whenCreateDNSRecords_thenReturnSPFRecord() {
+        Request request = new Request();
+        request.setExternalIP("192.168.1.1");
+        List<String> records = DNSValidator.createDNSRecords(DNSRecordType.SPF.name(), request);
+        assertNotNull(records);
+        assertEquals(1, records.size());
+        assertEquals(DNS.SPF_RECORD.replace(DNS.EXTERNAL_IP, "192.168.1.1"), records.get(0));
+    }
+
+    @Test
+    void givenUnsupportedRecordType_whenCreateDNSRecords_thenThrowIllegalArgumentException() {
+        Request request = new Request();
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
+            DNSValidator.createDNSRecords("INVALID_TYPE", request);
+        });
+        assertEquals("Unsupported DNS record type: INVALID_TYPE", exception.getMessage());
     }
 
 }

@@ -3,6 +3,7 @@ package org.acme.utils;
 import com.google.api.services.dns.model.ManagedZone;
 import com.google.api.services.dns.model.ManagedZoneCloudLoggingConfig;
 import com.google.api.services.dns.model.ManagedZoneDnsSecConfig;
+import com.google.api.services.dns.model.ResourceRecordSet;
 import com.google.cloud.dns.ZoneInfo;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
@@ -11,6 +12,7 @@ import net.bytebuddy.description.modifier.Visibility;
 import org.acme.constants.*;
 import org.acme.exceptions.DNSAlreadyExistsException;
 import org.acme.exceptions.InvalidDomainNameException;
+import org.acme.model.Request;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.xbill.DNS.Lookup;
 import org.xbill.DNS.Record;
@@ -18,9 +20,7 @@ import org.xbill.DNS.TextParseException;
 import org.xbill.DNS.Type;
 
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 public class DNSValidator {
@@ -88,6 +88,25 @@ public class DNSValidator {
         ManagedZoneCloudLoggingConfig cloudLoggingConfig = new ManagedZoneCloudLoggingConfig();
         cloudLoggingConfig.setEnableLogging(true);
         return  cloudLoggingConfig;
+    }
+
+    public static ResourceRecordSet initializeResourceRecords(Request request) {
+        ResourceRecordSet recordSet = new ResourceRecordSet();
+        recordSet.setName(request.getDomain());
+        recordSet.setType(DNSRecordType.MX.name());
+        recordSet.setTtl(DNS.DNS_TTL);
+        recordSet.setRrdatas(createDNSRecords(DNSRecordType.MX.name(), request));
+        return recordSet;
+    }
+
+    public static List<String> createDNSRecords(String recordType, Request request) {
+        return switch (recordType) {
+            case String r when r.equalsIgnoreCase(DNSRecordType.MX.name()) ->
+                    Collections.singletonList(DNS.MX_RECORD.replace(DNS.SERVER_DNS_NAME, request.getServerDNS()));
+            case String r when r.equalsIgnoreCase(DNSRecordType.SPF.name()) ->
+                    Collections.singletonList(DNS.SPF_RECORD.replace(DNS.EXTERNAL_IP, request.getExternalIP()));
+            default -> throw new IllegalArgumentException("Unsupported DNS record type: " + recordType);
+        };
     }
 
     /**

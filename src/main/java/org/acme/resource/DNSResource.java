@@ -2,10 +2,7 @@ package org.acme.resource;
 
 import io.smallrye.mutiny.Uni;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.Consumes;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +10,8 @@ import org.acme.constants.Errors;
 import org.acme.constants.Success;
 import org.acme.exceptions.DNSAlreadyExistsException;
 import org.acme.exceptions.ManagedZoneCreationFailed;
+import org.acme.exceptions.UnableToAddDNSEntries;
+import org.acme.model.Request;
 import org.acme.service.DNSManagementService;
 
 import java.util.List;
@@ -36,7 +35,7 @@ public class DNSResource {
      * @return "List<ManagedZone>"
      */
     @POST
-    @Path("/create")
+    @Path("/zones")
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     public Uni<Response> createCloudDNSManagedZone(List<String> domains) {
@@ -53,6 +52,30 @@ public class DNSResource {
                 })
                 .onFailure().recoverWithItem(ex -> {
                     log.error("Unexpected error occurred while creating Managed Zone: {}", ex.getMessage());
+                    return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                            .entity(new org.acme.model.Response(Errors.UNEXPECTED_ERROR_OCCURRED + ex.getMessage()))
+                            .build();
+                });
+    }
+
+    @POST
+    @Path("/zones/{zoneId}/records")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Uni<Response> addDnsRecordToZone(@PathParam("zoneId") String zoneId, List<Request> dnsRequests) {
+        return dnsManagementService.manageDnsEntryService(dnsRequests, zoneId)
+                .onItem().transform(dnsRequest -> Response.status(Response.Status.CREATED)
+                        .entity(dnsRequest)
+                        .build())
+                .onFailure(UnableToAddDNSEntries.class)
+                .recoverWithItem(ex -> {
+                    log.error("Unable to create DNS entries for Managed Zone, Exception: {}", ex.getMessage());
+                    return Response.status(Response.Status.CONFLICT)
+                            .entity(new org.acme.model.Response(ex.getMessage()))
+                            .build();
+                })
+                .onFailure().recoverWithItem(ex -> {
+                    log.error("Unexpected error occurred while adding DNS records, Exception: {}", ex.getMessage());
                     return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                             .entity(new org.acme.model.Response(Errors.UNEXPECTED_ERROR_OCCURRED + ex.getMessage()))
                             .build();

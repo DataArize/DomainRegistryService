@@ -7,6 +7,7 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.dns.Dns;
 import com.google.api.services.dns.model.ManagedZone;
+import com.google.api.services.dns.model.ResourceRecordSet;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -20,6 +21,8 @@ import org.acme.constants.Dummy;
 import org.acme.constants.Errors;
 import org.acme.exceptions.InvalidDomainNameException;
 import org.acme.exceptions.ManagedZoneCreationFailed;
+import org.acme.exceptions.UnableToAddDNSEntries;
+import org.acme.model.Request;
 import org.acme.utils.DNSValidator;
 import org.acme.utils.DomainValidator;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -72,6 +75,27 @@ public class DNSManagementService {
                         } catch (IOException ex) {
                             log.error("Unable to create Managed Zone for domain '{}', Exception: {}", domain, ex.getMessage());
                             throw new ManagedZoneCreationFailed(Errors.UNABLE_TO_CREATE_MANAGED_ZONE + ex.getMessage());
+                        }
+                    });
+                })
+                .collect().asList();
+    }
+
+
+    public Uni<List<ResourceRecordSet>> manageDnsEntryService(List<Request> dnsRequests, String managedZone) {
+        return Multi.createFrom().items(dnsRequests.stream())
+                .onItem().transformToUniAndConcatenate(dnsRequest -> {
+                     ResourceRecordSet recordSet = DNSValidator
+                            .initializeResourceRecords(dnsRequest);
+                    return Uni.createFrom().item(() -> {
+                        try {
+                            Dns.ResourceRecordSets.Create request = cloudDnsClient.resourceRecordSets().create(projectId, managedZone, recordSet);
+                            ResourceRecordSet resourceRecordSet = request.execute();
+                            log.info("DNS entries added for Managed Zone, DNS RECORD: {}", resourceRecordSet);
+                            return resourceRecordSet; // Return the response here
+                        } catch (IOException ex) {
+                            log.error("Unable to create DNS records for Managed Zone: {}, Exception: {}", managedZone, ex.getMessage(), ex);
+                            throw new UnableToAddDNSEntries(Errors.UNABLE_TO_CREATE_DNS_ENTRIES + managedZone + Errors.EXCEPTION + ex.getMessage());
                         }
                     });
                 })
