@@ -13,6 +13,8 @@ permissions:
 jobs:
   deploy_to_artifact_registry:
     runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ secrets.PROJECT_ID }}
     steps:
       - name: Git Checkout
         uses: actions/checkout@v4
